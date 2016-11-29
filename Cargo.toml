@@ -18,7 +18,7 @@ tokio-core = "0.1.0"
 tokio-service = { git = "https://github.com/tokio-rs/tokio-service", rev="da47a93" }
 tk-bufstream = "0.1.0"
 minihttp = { git = "https://github.com/popravich/minihttp" }
-regex = "0.1"
+cookie = { git = "https://github.com/hayaku-rs/cookie" }
 urlencoded = { git = "https://github.com/nokaa/urlencoded" }
 
 [dependencies.multipart]

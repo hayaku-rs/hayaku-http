@@ -2,6 +2,7 @@ use futures::Finished;
 use tokio_core::net::TcpStream;
 use tk_bufstream::{Flushed, IoBuf};
 use minihttp::{self, Status};
+use cookie::Cookie;
 
 use std::fmt::Display;
 use std::fs;
@@ -87,9 +88,19 @@ impl ResponseWriter {
     }
 
     pub fn redirect(&mut self, status: Status, location: &[u8], data: &[u8]) -> io::Result<()> {
-        self.status(status);
+        if !self.is_started() {
+            self.status(status);
+        }
         self.add_header("Location", location);
         self.write_all(data)
+    }
+
+    pub fn set_cookie(&mut self, cookie: Cookie) {
+        if !self.is_started() {
+            self.status(Status::Ok);
+        }
+        let cookie = cookie.as_bytes();
+        self.add_header("Set-Cookie", &cookie);
     }
 }
 

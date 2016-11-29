@@ -1,4 +1,5 @@
 use minihttp::{self, enums, request};
+use cookie::Cookie;
 use urlencoded::{parse_urlencoded, parse_urlencoded_html_escape};
 
 use super::Method;
@@ -95,5 +96,21 @@ impl<'a> Request<'a> {
             }
             None => unimplemented!(),
         }
+    }
+
+    pub fn get_cookies(&self) -> Vec<Cookie> {
+        use minihttp::enums::Header;
+
+        let mut cookies = Vec::new();
+
+        for &(ref header, ref value) in self.headers {
+            if let &Header::Raw(ref s) = header {
+                if s == "Cookie" {
+                    let cookie = Cookie::from_bytes(value.as_bytes());
+                    cookies.push(cookie);
+                }
+            }
+        }
+        cookies
     }
 }

@@ -12,19 +12,17 @@ extern crate tokio_core;
 extern crate tokio_service;
 extern crate tk_bufstream;
 extern crate minihttp;
-extern crate regex;
+extern crate cookie;
 extern crate urlencoded;
 extern crate multipart;
 
 mod handler;
 mod method;
-mod path;
 mod request;
 mod response;
 
 pub use handler::Handler;
 pub use method::Method;
-pub use path::Path;
 pub use response::ResponseWriter;
 pub use request::Request;
 pub use minihttp::Status;
