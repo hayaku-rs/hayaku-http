@@ -95,7 +95,7 @@ impl ResponseWriter {
         self.write_all(data)
     }
 
-    pub fn set_cookie(&mut self, cookie: Cookie) {
+    pub fn set_cookie(&mut self, cookie: &Cookie) {
         if !self.is_started() {
             self.status(Status::Ok);
         }
