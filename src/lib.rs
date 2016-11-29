@@ -88,8 +88,9 @@ impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Http<T, H> {
 
     /// Calling this method will cause form data to be HTML-escaped
     /// when parsed.
-    pub fn sanitize(&mut self) {
+    pub fn sanitize(&mut self) -> &mut Self {
         self.sanitize_input = true;
+        self
     }
 
     /// Run the server
