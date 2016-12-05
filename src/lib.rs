@@ -34,7 +34,7 @@ use std::sync::Arc;
 // here. We can't do this until https://github.com/rust-lang/rust/issues/21903
 // is resovled. This shouldn't be a problem because when we use this type we
 // are constraining `T` to be Clone.
-pub type RequestHandler<T> = Arc<(Fn(&Request, &mut Response, &T)) + Send + Sync>;
+pub type RequestHandler<T> = Arc<(Fn(Request, &mut Response, &T)) + Send + Sync>;
 
 #[derive(Clone)]
 pub struct Http<T: Clone + Send, H: Clone + Send + Handler<T>> {
@@ -60,7 +60,7 @@ impl<T: 'static + Clone + Send, H: 'static + Clone + Send + Handler<T>> Service 
 
         finished({
             let mut res = Response::new();
-            handler.handler(&req, &mut res, &context);
+            handler.handler(req, &mut res, &context);
             res.into_hyper_response()
         })
     }

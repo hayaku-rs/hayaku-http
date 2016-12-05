@@ -39,14 +39,14 @@ impl Response {
     }
 
     // TODO(nokaa): don't clone here, that's really expensive
-    pub fn into_hyper_response(&self) -> hyper::server::Response {
+    pub fn into_hyper_response(self) -> hyper::server::Response {
         let status = self.status;
-        let headers = self.headers.clone();
+        let headers = self.headers;
         let hyper_res = hyper::server::Response::new()
             .status(status)
             .headers(headers);
-        if let Some(ref body) = self.body {
-            hyper_res.body(body.clone())
+        if let Some(body) = self.body {
+            hyper_res.body(body)
         } else {
             hyper_res
         }
