@@ -20,6 +20,7 @@ mod response;
 pub use handler::Handler;
 pub use hyper::Method;
 pub use hyper::StatusCode as Status;
+pub use hyper::header;
 pub use response::Response;
 pub use request::Request;
 
