@@ -8,73 +8,64 @@
 #[macro_use]
 extern crate log;
 extern crate futures;
-extern crate tokio_core;
-extern crate tokio_service;
-extern crate tk_bufstream;
-extern crate minihttp;
+extern crate hyper;
 extern crate cookie;
 extern crate urlencoded;
 extern crate multipart;
 
 mod handler;
-mod method;
 mod request;
 mod response;
 
 pub use handler::Handler;
-pub use method::Method;
-pub use response::ResponseWriter;
+pub use hyper::Method;
+pub use hyper::StatusCode as Status;
+pub use response::Response;
 pub use request::Request;
-pub use minihttp::Status;
 
 use futures::{Finished, finished};
-use tokio_core::net::TcpStream;
-use tokio_core::reactor::Core;
-use tokio_service::Service;
-use tk_bufstream::IoBuf;
-use minihttp::{Error, ResponseFn};
+use hyper::server::{Server, Service};
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 // TODO(nokaa): We probably want to enforce the Clone trait bound on `T`
 // here. We can't do this until https://github.com/rust-lang/rust/issues/21903
 // is resovled. This shouldn't be a problem because when we use this type we
 // are constraining `T` to be Clone.
-pub type RequestHandler<T> = Fn(&Request, &mut ResponseWriter, &T);
-
-type Response = ResponseFn<Finished<IoBuf<TcpStream>, Error>, TcpStream>;
+pub type RequestHandler<T> = Arc<(Fn(&Request, &mut Response, &T)) + Send + Sync>;
 
 #[derive(Clone)]
-pub struct Http<T: Clone, H: Clone + Handler<T>> {
+pub struct Http<T: Clone + Send, H: Clone + Send + Handler<T>> {
     handler: H,
     context: T,
     sanitize_input: bool,
 }
 
-impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Service for Http<T, H> {
-    type Request = minihttp::Request;
-    type Response = Response;
-    type Error = Error;
-    type Future = Finished<Self::Response, Error>;
+impl<T: 'static + Clone + Send, H: 'static + Clone + Send + Handler<T>> Service for Http<T, H> {
+    type Request = hyper::server::Request;
+    type Response = hyper::server::Response;
+    type Error = hyper::Error;
+    type Future = Finished<Self::Response, hyper::Error>;
 
-    fn call(&self, req: minihttp::Request) -> Self::Future {
+    fn call(&self, req: hyper::server::Request) -> Self::Future {
         // We declare these variables here to satisfy lifetime requirements.
         // Note that as these are both Rc (smart pointers) we can clone them
         // without issue.
         let handler = self.handler.clone();
         let context = self.context.clone();
         let sanitize = self.sanitize_input;
+        let req = Request::new(req, sanitize);
 
-        finished(ResponseFn::new(move |res| {
-            let mut res = ResponseWriter::new(res);
-            let req = Request::new(&req, sanitize);
+        finished({
+            let mut res = Response::new();
             handler.handler(&req, &mut res, &context);
-            res.done()
-        }))
+            res.into_hyper_response()
+        })
     }
 }
 
-impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Http<T, H> {
+impl<T: 'static + Clone + Send, H: 'static + Clone + Send + Handler<T>> Http<T, H> {
     /// Create a new Http handler
     pub fn new(handler: H, context: T) -> Self {
         Http {
@@ -93,8 +84,8 @@ impl<T: 'static + Clone, H: 'static + Clone + Handler<T>> Http<T, H> {
 
     /// Run the server
     pub fn listen_and_serve(self, addr: SocketAddr) {
-        let mut lp = Core::new().unwrap();
-        minihttp::serve(&lp.handle(), addr, move || Ok(self.clone()));
-        lp.run(futures::empty::<(), ()>()).unwrap()
+        let server = Server::http(&addr).unwrap();
+        let (listener, server) = server.standalone(move || Ok(self.clone())).unwrap();
+        server.run();
     }
 }

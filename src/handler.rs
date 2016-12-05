@@ -1,5 +1,5 @@
-use super::{Request, ResponseWriter};
+use super::{Request, Response};
 
 pub trait Handler<T: Clone> {
-    fn handler(&self, &Request, &mut ResponseWriter, &T);
+    fn handler(&self, &Request, &mut Response, &T);
 }

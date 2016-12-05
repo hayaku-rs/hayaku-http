@@ -1,16 +1,56 @@
-use minihttp::{self, enums, request};
+use hyper::{self, Method, RequestUri, HttpVersion};
+use hyper::header::Headers;
 use cookie::Cookie;
 use urlencoded::{parse_urlencoded, parse_urlencoded_html_escape};
 
-use super::Method;
-
 use std::cell::RefCell;
-use std::collections::HashMap;
-use std::net::SocketAddr;
 
 // mod multipart;
 
-pub struct Request<'a> {
+pub struct Request {
+    request: hyper::server::Request,
+    pub user_data: RefCell<Vec<u8>>,
+    sanitize_input: bool,
+}
+
+impl Request {
+    pub fn new(req: hyper::server::Request, sanitize: bool) -> Self {
+        Request {
+            request: req,
+            user_data: RefCell::new(Vec::new()),
+            sanitize_input: sanitize,
+        }
+    }
+
+    pub fn method(&self) -> &Method {
+        self.request.method()
+    }
+
+    pub fn headers(&self) -> &Headers {
+        self.request.headers()
+    }
+
+    pub fn uri(&self) -> &RequestUri {
+        self.request.uri()
+    }
+
+    pub fn version(&self) -> &HttpVersion {
+        self.request.version()
+    }
+
+    pub fn path(&self) -> Option<&str> {
+        self.request.path()
+    }
+
+    pub fn query(&self) -> Option<&str> {
+        self.request.query()
+    }
+
+    /*pub fn body(self) -> Body<Chunk, Error> {
+        self.request.body()
+    }*/
+}
+/*pub struct Request<'a> {
     pub method: Method,
     pub path: &'a String,
     pub version: &'a enums::Version,
@@ -113,4 +153,4 @@ impl<'a> Request<'a> {
         }
         cookies
     }
-}
+}*/

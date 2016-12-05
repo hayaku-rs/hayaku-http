@@ -1,126 +1,73 @@
-use futures::Finished;
-use tokio_core::net::TcpStream;
-use tk_bufstream::{Flushed, IoBuf};
-use minihttp::{self, Status};
 use cookie::Cookie;
+use hyper;
+use hyper::header::{self, Header, Headers};
+use super::Status;
 
-use std::fmt::Display;
 use std::fs;
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 use std::path::Path;
 
-pub struct ResponseWriter {
-    res_writer: minihttp::ResponseWriter<TcpStream>,
+pub struct Response {
+    status: Status,
+    headers: Headers,
+    body: Option<Vec<u8>>,
 }
 
-impl ResponseWriter {
-    pub fn new(res: minihttp::ResponseWriter<TcpStream>) -> ResponseWriter {
-        ResponseWriter { res_writer: res }
+impl Response {
+    pub fn new() -> Self {
+        Response {
+            status: Status::Ok,
+            headers: Headers::new(),
+            body: None,
+        }
     }
 
     pub fn status(&mut self, status: Status) {
-        self.res_writer.status(status)
+        self.status = status;
     }
 
-    pub fn custom_status(&mut self, code: u16, reason: &str) {
-        self.res_writer.custom_status(code, reason)
+    pub fn header<H: Header>(&mut self, header: H) {
+        self.headers.set(header);
     }
 
-    // TODO(nokaa): currently if the called function returns an error, we are panicking.
-    // We want to return the normal value, but the used Error is not exported from minihttp
-    pub fn add_header<V: AsRef<[u8]>>(&mut self, name: &str, value: V) {
-        if !self.is_started() {
-            self.status(Status::Ok);
+    pub fn headers(&mut self, headers: Headers) {
+        self.headers = headers;
+    }
+
+    pub fn body<T: Into<Vec<u8>>>(&mut self, body: T) {
+        self.body = Some(body.into());
+    }
+
+    // TODO(nokaa): don't clone here, that's really expensive
+    pub fn into_hyper_response(&self) -> hyper::server::Response {
+        let status = self.status;
+        let headers = self.headers.clone();
+        let hyper_res = hyper::server::Response::new()
+            .status(status)
+            .headers(headers);
+        if let Some(ref body) = self.body {
+            hyper_res.body(body.clone())
+        } else {
+            hyper_res
         }
-        self.res_writer.add_header(name, value).unwrap()
-    }
-
-    // TODO(nokaa): currently if the called function returns an error, we are panicking.
-    // We want to return the normal value, but the used Error is not exported from minihttp
-    pub fn format_header<D: Display>(&mut self, name: &str, value: D) {
-        self.res_writer.format_header(name, value).unwrap()
-    }
-
-    // TODO(nokaa): currently if the called function returns an error, we are panicking.
-    // We want to return the normal value, but the used Error is not exported from minihttp
-    pub fn add_length(&mut self, n: u64) {
-        self.res_writer.add_length(n).unwrap()
-    }
-
-
-    // TODO(nokaa): currently if the called function returns an error, we are panicking.
-    // We want to return the normal value, but the used Error is not exported from minihttp
-    pub fn add_chunked(&mut self) {
-        self.res_writer.add_chunked().unwrap()
-    }
-
-    pub fn is_started(&self) -> bool {
-        self.res_writer.is_started()
-    }
-
-    // TODO(nokaa): currently if the called function returns an error, we are panicking.
-    // We want to return the normal value, but the used Error is not exported from minihttp
-    pub fn done_headers(&mut self) -> bool {
-        self.res_writer.done_headers().unwrap()
-    }
-
-    pub fn write_body(&mut self, data: &[u8]) {
-        self.res_writer.write_body(data)
-    }
-
-    pub fn is_complete(&self) -> bool {
-        self.res_writer.is_complete()
-    }
-
-    pub fn done<E>(self) -> Finished<IoBuf<TcpStream>, E> {
-        self.res_writer.done()
-    }
-
-    pub fn steal_socket(self) -> Flushed<TcpStream> {
-        self.res_writer.steal_socket()
     }
 
     pub fn send_file<P: AsRef<Path>>(&mut self, filename: P) -> io::Result<()> {
         let mut file = fs::File::open(filename)?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
-        self.write_all(&buf)
-    }
-
-    pub fn redirect(&mut self, status: Status, location: &[u8], data: &[u8]) -> io::Result<()> {
-        if !self.is_started() {
-            self.status(status);
-        }
-        self.add_header("Location", location);
-        self.write_all(data)
-    }
-
-    pub fn set_cookie(&mut self, cookie: &Cookie) {
-        if !self.is_started() {
-            self.status(Status::Ok);
-        }
-        let cookie = cookie.as_bytes();
-        self.add_header("Set-Cookie", &cookie);
-    }
-}
-
-impl Write for ResponseWriter {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let len = buf.len();
-        if !self.is_started() {
-            self.status(Status::Ok);
-        }
-        self.add_length(len as u64);
-        if self.done_headers() {
-            self.write_body(buf);
-            Ok((buf.len()))
-        } else {
-            Ok(0)
-        }
-
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
+        self.body(buf);
         Ok(())
     }
+
+    pub fn redirect<S: Into<String>>(&mut self, status: Status, location: S, data: &[u8]) {
+        self.status(status);
+        self.header(header::Location(location.into()));
+        self.body(data);
+    }
+
+    /*pub fn set_cookie(&mut self, cookie: &Cookie) {
+        let cookie = cookie.as_bytes();
+        self.header(("Set-Cookie", &cookie));
+    }*/
 }
