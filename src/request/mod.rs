@@ -20,9 +20,9 @@ impl Request {
     pub fn new(req: hyper::server::Request, sanitize: bool) -> Self {
         Request {
             request: req,
+            sanitize_input: sanitize,
             user_data: RefCell::new(Vec::new()),
             form: RefCell::new(None),
-            sanitize_input: sanitize,
         }
     }
 
@@ -42,8 +42,13 @@ impl Request {
         self.request.version()
     }
 
-    pub fn path(&self) -> Option<&str> {
-        self.request.path()
+    // TODO(nokaa): We probably don't want to clone/to_string here
+    pub fn path(&self) -> Option<String> {
+        match *self.request.uri() {
+            RequestUri::AbsolutePath { path: ref p, .. } => Some(p.clone()),
+            RequestUri::AbsoluteUri(ref url) => Some(url.path().clone().to_string()),
+            _ => None,
+        }
     }
 
     pub fn query(&self) -> Option<&str> {
