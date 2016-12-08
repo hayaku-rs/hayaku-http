@@ -15,7 +15,7 @@ pub struct Request {
     uri: RequestUri,
     version: HttpVersion,
     headers: Headers,
-    body: Body,
+    body: RefCell<Body>,
     pub user_data: RefCell<Vec<u8>>,
     form: RefCell<Option<HashMap<String, String>>>,
     sanitize_input: bool,
@@ -30,7 +30,7 @@ impl Request {
             uri: uri,
             version: version,
             headers: headers,
-            body: body,
+            body: RefCell::new(body),
             sanitize_input: sanitize,
             user_data: RefCell::new(Vec::new()),
             form: RefCell::new(None),
@@ -53,7 +53,6 @@ impl Request {
         &self.version
     }
 
-    // TODO(nokaa): We probably don't want to clone/to_string here
     pub fn path(&self) -> Option<&str> {
         match self.uri {
             RequestUri::AbsolutePath { path: ref p, .. } => Some(p),
@@ -62,13 +61,12 @@ impl Request {
         }
     }
 
-    pub fn form_value<S: Into<String>>(&mut self, key: S) -> Option<String> {
+    pub fn form_value<S: Into<String>>(&self, key: S) -> Option<String> {
         use std::ops::Deref;
         let key = key.into();
 
         if *self.form.borrow() == None {
-            let ref mut body = self.body;
-            match body.poll() {
+            match self.body.borrow_mut().poll() {
                 Ok(Async::Ready(Some(chunk))) => {
                     let map = if self.sanitize_input {
                         parse_urlencoded_html_escape(chunk.deref())
@@ -92,32 +90,10 @@ impl Request {
                 Ok(Async::NotReady) => {
                     *self.form.borrow_mut() = Some(HashMap::new());
                 }
-                Err(e) => {
+                Err(_) => {
                     *self.form.borrow_mut() = Some(HashMap::new());
                 }
             }
-            /*match *self.body {
-                None => return None,
-                Some(ref b) => {
-                    let body = &b.data[..];
-                    info!("Request body: {:?}", body);
-                    let m = if self.sanitize_input {
-                        parse_urlencoded_html_escape(body)
-                    } else {
-                        parse_urlencoded(body)
-                    };
-                    let m = match m {
-                        Ok(m) => m,
-                        Err(e) => {
-                            // For now if we can't parse the form we
-                            // just return an empty map
-                            debug!("Error parsing form: {}", e);
-                            HashMap::new()
-                        }
-                    };
-                    *self.form.borrow_mut() = Some(m);
-                }
-            }*/
         }
 
         match *self.form.borrow() {
