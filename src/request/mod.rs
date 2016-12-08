@@ -1,5 +1,6 @@
 use futures::{Async, Stream};
 use hyper::{self, Method, RequestUri, HttpVersion};
+use hyper::server::ReqBody as Body;
 use hyper::header::Headers;
 use cookie::Cookie;
 use urlencoded::{parse_urlencoded, parse_urlencoded_html_escape};
@@ -10,7 +11,11 @@ use std::cell::RefCell;
 // mod multipart;
 
 pub struct Request {
-    request: hyper::server::Request,
+    method: Method,
+    uri: RequestUri,
+    version: HttpVersion,
+    headers: Headers,
+    body: Body,
     pub user_data: RefCell<Vec<u8>>,
     form: RefCell<Option<HashMap<String, String>>>,
     sanitize_input: bool,
@@ -18,8 +23,14 @@ pub struct Request {
 
 impl Request {
     pub fn new(req: hyper::server::Request, sanitize: bool) -> Self {
+        let (method, uri, version, headers, body) = req.deconstruct();
+        let body = body.unwrap_or_else(|| Body::empty());
         Request {
-            request: req,
+            method: method,
+            uri: uri,
+            version: version,
+            headers: headers,
+            body: body,
             sanitize_input: sanitize,
             user_data: RefCell::new(Vec::new()),
             form: RefCell::new(None),
@@ -27,40 +38,36 @@ impl Request {
     }
 
     pub fn method(&self) -> &Method {
-        self.request.method()
+        &self.method
     }
 
     pub fn headers(&self) -> &Headers {
-        self.request.headers()
+        &self.headers
     }
 
     pub fn uri(&self) -> &RequestUri {
-        self.request.uri()
+        &self.uri
     }
 
     pub fn version(&self) -> &HttpVersion {
-        self.request.version()
+        &self.version
     }
 
     // TODO(nokaa): We probably don't want to clone/to_string here
-    pub fn path(&self) -> Option<String> {
-        match *self.request.uri() {
-            RequestUri::AbsolutePath { path: ref p, .. } => Some(p.clone()),
-            RequestUri::AbsoluteUri(ref url) => Some(url.path().clone().to_string()),
+    pub fn path(&self) -> Option<&str> {
+        match self.uri {
+            RequestUri::AbsolutePath { path: ref p, .. } => Some(p),
+            RequestUri::AbsoluteUri(ref url) => Some(url.path()),
             _ => None,
         }
     }
 
-    pub fn query(&self) -> Option<&str> {
-        self.request.query()
-    }
-
-    pub fn form_value<S: Into<String>>(self, key: S) -> Option<String> {
+    pub fn form_value<S: Into<String>>(&mut self, key: S) -> Option<String> {
         use std::ops::Deref;
         let key = key.into();
 
         if *self.form.borrow() == None {
-            let mut body = self.request.body();
+            let ref mut body = self.body;
             match body.poll() {
                 Ok(Async::Ready(Some(chunk))) => {
                     let map = if self.sanitize_input {
