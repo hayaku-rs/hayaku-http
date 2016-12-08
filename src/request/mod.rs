@@ -68,6 +68,8 @@ impl Request {
         if *self.form.borrow() == None {
             match self.body.borrow_mut().poll() {
                 Ok(Async::Ready(Some(chunk))) => {
+                    debug!("form_value: Async::Ready(Some)");
+                    debug!("form_value: chunk: {:?}", chunk);
                     let map = if self.sanitize_input {
                         parse_urlencoded_html_escape(chunk.deref())
                     } else {
@@ -85,12 +87,15 @@ impl Request {
                     *self.form.borrow_mut() = Some(map);
                 }
                 Ok(Async::Ready(None)) => {
+                    debug!("form_value: Async::Ready(None)");
                     *self.form.borrow_mut() = Some(HashMap::new());
                 }
                 Ok(Async::NotReady) => {
+                    debug!("form_value: Async::NotReady");
                     *self.form.borrow_mut() = Some(HashMap::new());
                 }
-                Err(_) => {
+                Err(e) => {
+                    debug!("form_value: Error {}", e);
                     *self.form.borrow_mut() = Some(HashMap::new());
                 }
             }
