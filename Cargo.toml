@@ -14,10 +14,9 @@ An http library based on Golang's `net/http` written using Tokio and Futures.
 [dependencies]
 log = "0.3.6"
 futures = "0.1.6"
-tokio-core = "0.1.1"
-tokio-service = { git = "https://github.com/tokio-rs/tokio-service" }#, rev="da47a93" }
-#hyper = { git = "https://github.com/hyperium/hyper", branch = "tokio" }
-hyper = { git = "https://github.com/nokaa/hyper", branch = "tokio" }
+tokio-proto = { git = "https://github.com/tokio-rs/tokio-proto" }
+tokio-service = { git = "https://github.com/tokio-rs/tokio-service" }
+httbloat = { git = "https://github.com/hayaku-rs/httbloat" }
 cookie = { git = "https://github.com/hayaku-rs/cookie" }
 urlencoded = { git = "https://github.com/nokaa/urlencoded" }
 

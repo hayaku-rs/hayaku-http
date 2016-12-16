@@ -8,7 +8,9 @@
 #[macro_use]
 extern crate log;
 extern crate futures;
-extern crate hyper;
+extern crate tokio_proto;
+extern crate tokio_service;
+extern crate httbloat;
 extern crate cookie;
 extern crate urlencoded;
 extern crate multipart;
@@ -18,16 +20,18 @@ mod request;
 mod response;
 
 pub use handler::Handler;
-pub use hyper::Method;
-pub use hyper::StatusCode as Status;
-pub use hyper::header;
+pub use httbloat::Method;
+pub use httbloat::Status;
+pub use httbloat::Header;
 pub use response::Response;
 pub use request::Request;
 
 use futures::{Finished, finished};
-use hyper::server::{Server, Service};
+use tokio_proto::TcpServer;
+use tokio_service::Service;
 
 use std::net::SocketAddr;
+use std::io;
 use std::sync::Arc;
 
 // TODO(nokaa): We probably want to enforce the Clone trait bound on `T`
@@ -41,15 +45,16 @@ pub struct Http<T: Clone + Send, H: Clone + Send + Handler<T>> {
     handler: H,
     context: T,
     sanitize_input: bool,
+    num_threads: usize,
 }
 
 impl<T: 'static + Clone + Send, H: 'static + Clone + Send + Handler<T>> Service for Http<T, H> {
-    type Request = hyper::server::Request;
-    type Response = hyper::server::Response;
-    type Error = hyper::Error;
-    type Future = Finished<Self::Response, hyper::Error>;
+    type Request = httbloat::Request;
+    type Response = httbloat::Response;
+    type Error = io::Error;
+    type Future = Finished<Self::Response, Self::Error>;
 
-    fn call(&self, req: hyper::server::Request) -> Self::Future {
+    fn call(&self, req: httbloat::Request) -> Self::Future {
         // We declare these variables here to satisfy lifetime requirements.
         // Note that as these are both Rc (smart pointers) we can clone them
         // without issue.
@@ -61,18 +66,19 @@ impl<T: 'static + Clone + Send, H: 'static + Clone + Send + Handler<T>> Service 
         finished({
             let mut res = Response::new();
             handler.handler(&req, &mut res, &context);
-            res.into_hyper_response()
+            res.into_httbloat_response()
         })
     }
 }
 
-impl<T: 'static + Clone + Send, H: 'static + Clone + Send + Handler<T>> Http<T, H> {
+impl<T: 'static + Clone + Send + Sync, H: 'static + Clone + Send + Sync + Handler<T>> Http<T, H> {
     /// Create a new Http handler
     pub fn new(handler: H, context: T) -> Self {
         Http {
             handler: handler,
             context: context,
             sanitize_input: false,
+            num_threads: 1,
         }
     }
 
@@ -83,10 +89,16 @@ impl<T: 'static + Clone + Send, H: 'static + Clone + Send + Handler<T>> Http<T, 
         self
     }
 
+    /// Sets the number of event loops to run
+    pub fn threads(&mut self, threads: usize) -> &mut Self {
+        self.num_threads = threads;
+        self
+    }
+
     /// Run the server
     pub fn listen_and_serve(self, addr: SocketAddr) {
-        let server = Server::http(&addr).unwrap();
-        let (listener, server) = server.standalone(move || Ok(self.clone())).unwrap();
-        server.run();
+        let mut srv = TcpServer::new(httbloat::Http, addr);
+        srv.threads(self.num_threads);
+        srv.serve(move || Ok(self.clone()));
     }
 }
