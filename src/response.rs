@@ -1,4 +1,4 @@
-// use cookie::Cookie;
+use cookie::Cookie;
 use httbloat;
 use super::Status;
 
@@ -51,10 +51,11 @@ impl Response {
         self.body(data)
     }
 
-    /*pub fn set_cookie(&mut self, cookie: &Cookie) {
-    let cookie = cookie.as_bytes();
-    self.header(("Set-Cookie", &cookie));
-    }*/
+    pub fn set_cookie(&mut self, cookie: &Cookie) {
+        // TODO(nokaa): rethink this interface
+        let cookie = String::from_utf8(cookie.as_bytes()).unwrap();
+        self.add_header("Set-Cookie".to_string(), cookie);
+    }
 
     pub fn into_httbloat_response(self) -> httbloat::Response {
         self.0

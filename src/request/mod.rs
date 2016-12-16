@@ -1,5 +1,5 @@
 use httbloat::{self, Method, Header, Version};
-// use cookie::Cookie;
+use cookie::Cookie;
 use urlencoded::{parse_urlencoded, parse_urlencoded_html_escape};
 
 use std::collections::HashMap;
@@ -86,12 +86,12 @@ impl Request {
         }
     }
 
-    /*pub fn get_cookies(&self) -> Vec<Cookie> {
-        use minihttp::enums::Header;
+    pub fn get_cookies(&self) -> Vec<Cookie> {
+        use super::Header;
 
         let mut cookies = Vec::new();
 
-        for &(ref header, ref value) in self.headers {
+        for (ref header, ref value) in self.req.headers() {
             if let &Header::Raw(ref s) = header {
                 if s == "Cookie" {
                     let cookie = Cookie::from_bytes(value.as_bytes());
@@ -100,5 +100,5 @@ impl Request {
             }
         }
         cookies
-    }*/
+    }
 }
