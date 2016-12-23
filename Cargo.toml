@@ -26,6 +26,4 @@ default-features = false
 features = ["server"]
 
 [dev-dependencies]
-rand = "0.3"
 env_logger = "0.3.5"
-rustc-serialize = "0.3"
