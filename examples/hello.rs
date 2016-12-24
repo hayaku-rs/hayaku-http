@@ -7,7 +7,7 @@ struct Router;
 
 impl Handler<()> for Router {
     fn handler(&self, _req: &Request, res: &mut Response, _ctx: &()) {
-        res.body(b"hello, world!").unwrap();
+        res.body(b"hello, world!");
     }
 }
 

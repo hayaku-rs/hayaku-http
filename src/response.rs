@@ -28,27 +28,22 @@ impl Response {
         self.0.add_header(name, value);
     }
 
-    pub fn body(&mut self, body: &[u8]) -> io::Result<()> {
-        self.0.body(body)?;
-        Ok(())
+    pub fn body(&mut self, body: &[u8]) {
+        self.0.body(body);
     }
 
     pub fn send_file<P: AsRef<Path>>(&mut self, filename: P) -> io::Result<()> {
         let mut file = fs::File::open(filename)?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
-        self.body(&buf)?;
+        self.body(&buf);
         Ok(())
     }
 
-    pub fn redirect<S: Into<String>>(&mut self,
-                                     status: Status,
-                                     location: S,
-                                     data: &[u8])
-                                     -> io::Result<()> {
+    pub fn redirect<S: Into<String>>(&mut self, status: Status, location: S, data: &[u8]) {
         self.status(status);
         self.add_header("Location".to_string(), location.into());
-        self.body(data)
+        self.body(data);
     }
 
     pub fn set_cookie(&mut self, cookie: &Cookie) {

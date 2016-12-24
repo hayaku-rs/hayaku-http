@@ -92,7 +92,7 @@ impl Request {
         let mut cookies = Vec::new();
 
         for (ref header, ref value) in self.req.headers() {
-            if let &Header::Raw(ref s) = header {
+            if let Header::Raw(ref s) = *header {
                 if s == "Cookie" {
                     let cookie = Cookie::from_bytes(value.as_bytes());
                     cookies.push(cookie);
