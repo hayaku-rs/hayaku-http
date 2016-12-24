@@ -84,13 +84,13 @@ impl<T: 'static + Clone + Send + Sync, H: 'static + Clone + Send + Sync + Handle
 
     /// Calling this method will cause form data to be HTML-escaped
     /// when parsed.
-    pub fn sanitize(&mut self) -> &mut Self {
+    pub fn sanitize(mut self) -> Self {
         self.sanitize_input = true;
         self
     }
 
     /// Sets the number of event loops to run
-    pub fn threads(&mut self, threads: usize) -> &mut Self {
+    pub fn threads(mut self, threads: usize) -> Self {
         self.num_threads = threads;
         self
     }

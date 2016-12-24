@@ -15,7 +15,5 @@ fn main() {
     let addr = "127.0.0.1:3000".parse().unwrap();
 
     let router = Router;
-    let mut http = Http::new(router, ());
-    http.threads(4);
-    http.listen_and_serve(addr);
+    Http::new(router, ()).threads(4).listen_and_serve(addr);
 }
