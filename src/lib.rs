@@ -54,7 +54,7 @@ impl<T: 'static + Clone + Send, H: 'static + Clone + Send + Handler<T>> Service 
     type Error = io::Error;
     type Future = Finished<Self::Response, Self::Error>;
 
-    fn call(&self, req: httbloat::Request) -> Self::Future {
+    fn call(&mut self, req: httbloat::Request) -> Self::Future {
         // We declare these variables here to satisfy lifetime requirements.
         // Note that as these are both Rc (smart pointers) we can clone them
         // without issue.
