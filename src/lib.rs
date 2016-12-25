@@ -38,8 +38,11 @@ use std::sync::Arc;
 // here. We can't do this until https://github.com/rust-lang/rust/issues/21903
 // is resovled. This shouldn't be a problem because when we use this type we
 // are constraining `T` to be Clone.
+
+/// The type used by all request Handlers.
 pub type RequestHandler<T> = Arc<(Fn(&Request, &mut Response, &T)) + Send + Sync>;
 
+/// An HTTP server.
 #[derive(Clone)]
 pub struct Http<T: Clone + Send, H: Clone + Send + Handler<T>> {
     handler: H,
@@ -72,7 +75,9 @@ impl<T: 'static + Clone + Send, H: 'static + Clone + Send + Handler<T>> Service 
 }
 
 impl<T: 'static + Clone + Send + Sync, H: 'static + Clone + Send + Sync + Handler<T>> Http<T, H> {
-    /// Create a new Http handler
+    /// Create a new Http server. `handler` is a router which
+    /// dispatches all requests. `context` is shared state for the server
+    /// usable by all requests.
     pub fn new(handler: H, context: T) -> Self {
         Http {
             handler: handler,
@@ -89,13 +94,14 @@ impl<T: 'static + Clone + Send + Sync, H: 'static + Clone + Send + Sync + Handle
         self
     }
 
-    /// Sets the number of event loops to run
+    /// Sets the number of event loops to run. You probably do not want
+    /// to set this higher than the number of CPUs on your machine.
     pub fn threads(mut self, threads: usize) -> Self {
         self.num_threads = threads;
         self
     }
 
-    /// Run the server
+    /// Run the server on `addr`.
     pub fn listen_and_serve(self, addr: SocketAddr) {
         let mut srv = TcpServer::new(httbloat::Http, addr);
         srv.threads(self.num_threads);
