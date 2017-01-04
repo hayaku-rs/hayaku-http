@@ -47,7 +47,6 @@ pub type RequestHandler<T> = Arc<(Fn(&Request, &mut Response, &T)) + Send + Sync
 pub struct Http<T: Clone + Send, H: Clone + Send + Handler<T>> {
     handler: H,
     context: T,
-    sanitize_input: bool,
     num_threads: usize,
 }
 
@@ -63,8 +62,7 @@ impl<T: 'static + Clone + Send, H: 'static + Clone + Send + Handler<T>> Service 
         // without issue.
         let handler = self.handler.clone();
         let context = self.context.clone();
-        let sanitize = self.sanitize_input;
-        let req = Request::new(req, sanitize);
+        let req = Request::new(req);
 
         finished({
             let mut res = Response::new();
@@ -82,16 +80,8 @@ impl<T: 'static + Clone + Send + Sync, H: 'static + Clone + Send + Sync + Handle
         Http {
             handler: handler,
             context: context,
-            sanitize_input: false,
             num_threads: 1,
         }
-    }
-
-    /// Calling this method will cause form data to be HTML-escaped
-    /// when parsed.
-    pub fn sanitize(mut self) -> Self {
-        self.sanitize_input = true;
-        self
     }
 
     /// Sets the number of event loops to run. You probably do not want

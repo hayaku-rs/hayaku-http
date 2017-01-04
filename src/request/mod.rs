@@ -1,6 +1,6 @@
 use httbloat::{self, Method, Header, Version};
 use cookie::Cookie;
-use urlencoded::{parse_urlencoded, parse_urlencoded_html_escape};
+use urlencoded::parse_urlencoded;
 
 use std::collections::HashMap;
 use std::cell::RefCell;
@@ -17,17 +17,15 @@ pub struct Request {
     /// stored using serialization like serde.
     pub user_data: RefCell<Vec<u8>>,
     form: RefCell<Option<HashMap<String, String>>>,
-    sanitize_input: bool,
 }
 
 impl Request {
     /// Create a new request from an httbloat request.
-    pub fn new(req: httbloat::Request, sanitize: bool) -> Self {
+    pub fn new(req: httbloat::Request) -> Self {
         Request {
             req: req,
             user_data: RefCell::new(Vec::new()),
             form: RefCell::new(None),
-            sanitize_input: sanitize,
         }
     }
 
@@ -72,12 +70,7 @@ impl Request {
                 None => return None,
                 Some(body) => {
                     info!("Request body: {:?}", body);
-                    let m = if self.sanitize_input {
-                        parse_urlencoded_html_escape(body)
-                    } else {
-                        parse_urlencoded(body)
-                    };
-                    let m = match m {
+                    let m = match parse_urlencoded(body) {
                         Ok(m) => m,
                         Err(e) => {
                             // For now if we can't parse the form we
