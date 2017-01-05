@@ -59,42 +59,6 @@ impl Request {
         self.req.body()
     }
 
-    /// Attempts to retrieve values from a form sent with this request.
-    /// A useful way to work with this method is to call
-    /// `req.form_value("key").unwrap_or(String::new())`.
-    pub fn form_value<S: Into<String>>(&self, key: S) -> Option<String> {
-        let key = key.into();
-
-        if *self.form.borrow() == None {
-            match self.req.body() {
-                None => return None,
-                Some(body) => {
-                    info!("Request body: {:?}", body);
-                    let m = match parse_urlencoded(body) {
-                        Ok(m) => m,
-                        Err(e) => {
-                            // For now if we can't parse the form we
-                            // just return an empty map
-                            debug!("Error parsing form: {}", e);
-                            HashMap::new()
-                        }
-                    };
-                    *self.form.borrow_mut() = Some(m);
-                }
-            }
-        }
-
-        match *self.form.borrow() {
-            Some(ref map) => {
-                match map.get(&key) {
-                    None => None,
-                    Some(s) => Some(s.clone()),
-                }
-            }
-            None => unimplemented!(),
-        }
-    }
-
     /// Returns the cookies sent with this request.
     pub fn get_cookies(&self) -> Vec<Cookie> {
         use super::Header;
@@ -110,5 +74,53 @@ impl Request {
             }
         }
         cookies
+    }
+
+    /// Attempts to retrieve values from a form sent with this request.
+    /// A useful way to work with this method is to call
+    /// `req.form_value("key").unwrap_or(String::new())`.
+    pub fn form_value<S: Into<String>>(&self, key: S) -> Option<String> {
+        let key = key.into();
+
+        // If there is no body to the request the key is obviously not found.
+        if self.req.body().is_none() {
+            return None;
+        }
+
+        // If the form data has not yet been parsed, parse it.
+        if *self.form.borrow() == None {
+            self.parse_form();
+        }
+
+        match *self.form.borrow() {
+            Some(ref map) => {
+                match map.get(&key) {
+                    None => None,
+                    Some(s) => Some(s.clone()),
+                }
+            }
+            // It shouldn't be possible for the form field to be `None`
+            // at this point.
+            None => unreachable!(),
+        }
+    }
+
+    fn parse_form(&self) {
+        match self.req.body() {
+            None => return,
+            Some(body) => {
+                info!("Request body: {:?}", body);
+                let m = match parse_urlencoded(body) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        // For now if we can't parse the form we
+                        // just return an empty map
+                        debug!("Error parsing form: {}", e);
+                        HashMap::new()
+                    }
+                };
+                *self.form.borrow_mut() = Some(m);
+            }
+        }
     }
 }
