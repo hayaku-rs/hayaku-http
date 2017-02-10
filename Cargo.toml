@@ -1,29 +1,33 @@
 [package]
-name = "hayaku-http"
-version = "0.1.0"
 authors = ["nokaa <nokaa@cock.li>"]
-license = "AGPLv3"
-readme = "README.md"
-keywords = ["futures", "async", "tokio", "web", "hayaku", "server"]
-repository = "https://github.com/nokaa/hayaku"
+description = "An http library based on Golang's `net/http` written using Tokio and Futures.\n"
 homepage = "https://github.com/nokaa/hayaku"
-description = """
-An http library based on Golang's `net/http` written using Tokio and Futures.
-"""
+keywords = ["futures", "async", "tokio", "web", "hayaku", "server"]
+license = "AGPLv3"
+name = "hayaku-http"
+readme = "README.md"
+repository = "https://github.com/nokaa/hayaku"
+version = "0.1.0"
 
 [dependencies]
-log = "0.3.6"
 futures = "0.1.6"
-tokio-proto = { git = "https://github.com/tokio-rs/tokio-proto" }
-tokio-service = { git = "https://github.com/tokio-rs/tokio-service" }
-httbloat = { git = "https://github.com/hayaku-rs/httbloat" }
-cookie = { git = "https://github.com/hayaku-rs/cookie" }
-urlencoded = { git = "https://github.com/nokaa/urlencoded" }
+log = "0.3.6"
+tokio-proto = "0.1.0"
+tokio-service = "0.1.0"
+
+[dependencies.cookie]
+git = "https://github.com/hayaku-rs/cookie"
+
+[dependencies.httbloat]
+git = "https://github.com/hayaku-rs/httbloat"
 
 [dependencies.multipart]
-version = "0.8.1"
 default-features = false
 features = ["server"]
+version = "0.8.1"
+
+[dependencies.urlencoded]
+git = "https://github.com/nokaa/urlencoded"
 
 [dev-dependencies]
 env_logger = "0.3.5"
